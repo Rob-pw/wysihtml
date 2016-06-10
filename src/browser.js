@@ -1,14 +1,15 @@
 /**
  * Detect browser support for specific features
  */
-wysihtml5.browser = (function() {
+wysihtml.browser = (function() {
   var userAgent   = navigator.userAgent,
       testElement = document.createElement("div"),
       // Browser sniffing is unfortunately needed since some behaviors are impossible to feature detect
-      isGecko     = userAgent.indexOf("Gecko")        !== -1 && userAgent.indexOf("KHTML") === -1,
-      isWebKit    = userAgent.indexOf("AppleWebKit/") !== -1,
-      isChrome    = userAgent.indexOf("Chrome/")      !== -1,
-      isOpera     = userAgent.indexOf("Opera/")       !== -1;
+      // We need to be extra careful about Microsoft as it shows increasing tendency of tainting its userAgent strings with false feathers
+      isGecko     = userAgent.indexOf("Gecko")        !== -1 && userAgent.indexOf("KHTML") === -1 && !isIE(),
+      isWebKit    = userAgent.indexOf("AppleWebKit/") !== -1 && !isIE(),
+      isChrome    = userAgent.indexOf("Chrome/")      !== -1 && !isIE(),
+      isOpera     = userAgent.indexOf("Opera/")       !== -1 && !isIE();
 
   function iosVersion(userAgent) {
     return +((/ipad|iphone|ipod/.test(userAgent) && userAgent.match(/ os (\d+).+? like mac os x/)) || [undefined, 0])[1];
@@ -25,7 +26,11 @@ wysihtml5.browser = (function() {
     if (navigator.appName == 'Microsoft Internet Explorer') {
       re = new RegExp("MSIE ([0-9]{1,}[\.0-9]{0,})");
     } else if (navigator.appName == 'Netscape') {
-      re = new RegExp("Trident/.*rv:([0-9]{1,}[\.0-9]{0,})");
+      if (navigator.userAgent.indexOf("Trident") > -1) {
+        re = new RegExp("Trident/.*rv:([0-9]{1,}[\.0-9]{0,})");
+      } else if ((/Edge\/(\d+)./i).test(navigator.userAgent)) {
+        re = /Edge\/(\d+)./i;
+      }
     }
 
     if (re && re.exec(navigator.userAgent) != null) {
@@ -108,7 +113,7 @@ wysihtml5.browser = (function() {
      * Firefox sometimes shows a huge caret in the beginning after focusing
      */
     displaysCaretInEmptyContentEditableCorrectly: function() {
-      return isIE();
+      return isIE(12, ">");
     },
 
     /**
@@ -151,7 +156,7 @@ wysihtml5.browser = (function() {
      * @param {Object} context The document object on which to check HTML5 support
      *
      * @example
-     *    wysihtml5.browser.supportsHTML5Tags(document);
+     *    wysihtml.browser.supportsHTML5Tags(document);
      */
     supportsHTML5Tags: function(context) {
       var element = context.createElement("div"),
@@ -170,18 +175,19 @@ wysihtml5.browser = (function() {
      * @return {Boolean}
      *
      * @example
-     *    wysihtml5.browser.supportsCommand(document, "bold");
+     *    wysihtml.browser.supportsCommand(document, "bold");
      */
     supportsCommand: (function() {
       // Following commands are supported but contain bugs in some browsers
+      // TODO: investigate if some of these bugs can be tested without altering selection on page, instead of targeting browsers and versions directly
       var buggyCommands = {
         // formatBlock fails with some tags (eg. <blockquote>)
         "formatBlock":          isIE(10, "<="),
          // When inserting unordered or ordered lists in Firefox, Chrome or Safari, the current selection or line gets
          // converted into a list (<ul><li>...</li></ul>, <ol><li>...</li></ol>)
          // IE and Opera act a bit different here as they convert the entire content of the current block element into a list
-        "insertUnorderedList":  isIE(9, ">="),
-        "insertOrderedList":    isIE(9, ">=")
+        "insertUnorderedList":  isIE(),
+        "insertOrderedList":    isIE()
       };
 
       // Firefox throws errors for queryCommandSupported, so we have to build up our own object of supported commands
@@ -306,7 +312,7 @@ wysihtml5.browser = (function() {
      *
      * @example
      *    var input = document.createElement("input");
-     *    if (wysihtml5.browser.supportsSpeechApiOn(input)) {
+     *    if (wysihtml.browser.supportsSpeechApiOn(input)) {
      *      // ...
      *    }
      */
@@ -328,13 +334,18 @@ wysihtml5.browser = (function() {
      * IE is the only browser who fires the "focus" event not immediately when .focus() is called on an element
      */
     doesAsyncFocus: function() {
-      return isIE();
+      return isIE(12, ">");
     },
 
     /**
      * In IE it's impssible for the user and for the selection library to set the caret after an <img> when it's the lastChild in the document
      */
     hasProblemsSettingCaretAfterImg: function() {
+      return isIE();
+    },
+
+    /* In IE when deleting with caret at the begining of LI, List get broken into half instead of merging the LI with previous */
+    hasLiDeletingProblem: function() {
       return isIE();
     },
 
@@ -371,6 +382,12 @@ wysihtml5.browser = (function() {
       return isWebKit;
     },
 
+    // In all webkit browsers there are some places where caret can not be placed at the end of blocks and directly before block level element
+    //   when startContainer is element.
+    hasCaretBlockElementIssue: function() {
+      return isWebKit;
+    },
+
     supportsMutationEvents: function() {
       return ("MutationEvent" in window);
     },
@@ -380,8 +397,8 @@ wysihtml5.browser = (function() {
       It is on window but cannot return text/html
       Should actually check for clipboardData on paste event, but cannot in firefox
     */
-    supportsModenPaste: function () {
-      return !("clipboardData" in window);
+    supportsModernPaste: function () {
+      return !isIE();
     },
 
     // Unifies the property names of element.style by returning the suitable property name for current browser
@@ -391,6 +408,10 @@ wysihtml5.browser = (function() {
         return ("styleFloat" in document.createElement("div").style) ? "styleFloat" : "cssFloat";
       }
       return key;
+    },
+
+    usesControlRanges: function() {
+      return document.body && "createControlRange" in document.body;
     }
   };
 })();

@@ -1,18 +1,37 @@
 // TODO: Refactor dom tree traversing here
-(function(wysihtml5) {
-  wysihtml5.dom.domNode = function(node) {
-    var defaultNodeTypes = [wysihtml5.ELEMENT_NODE, wysihtml5.TEXT_NODE];
+(function(wysihtml) {
+
+  // Finds parents of a node, returning the outermost node first in Array
+  // if contain node is given parents search is stopped at the container
+  function parents(node, container) {
+    var nodes = [node], n = node;
+
+    // iterate parents while parent exists and it is not container element
+    while((container && n && n !== container) || (!container && n)) {
+      nodes.unshift(n);
+      n = n.parentNode;
+    }
+    return nodes;
+  }
+
+  wysihtml.dom.domNode = function(node) {
+    var defaultNodeTypes = [wysihtml.ELEMENT_NODE, wysihtml.TEXT_NODE];
 
     return {
 
       is: {
         emptyTextNode: function(ignoreWhitespace) {
           var regx = ignoreWhitespace ? (/^\s*$/g) : (/^[\r\n]*$/g);
-          return node.nodeType === wysihtml5.TEXT_NODE && (regx).test(node.data);
+          return node && node.nodeType === wysihtml.TEXT_NODE && (regx).test(node.data);
+        },
+
+        // Returns if node is the rangy selection bookmark element (that must not be taken into account in most situatons and is removed on selection restoring)
+        rangyBookmark: function() {
+          return node && node.nodeType === 1 && node.classList.contains('rangySelectionBoundary');
         },
 
         visible: function() {
-          var isVisible = !(/^\s*$/g).test(wysihtml5.dom.getTextContent(node));
+          var isVisible = !(/^\s*$/g).test(wysihtml.dom.getTextContent(node));
 
           if (!isVisible) {
             if (node.nodeType === 1 && node.querySelector('img, br, hr, object, embed, canvas, input, textarea')) {
@@ -20,10 +39,24 @@
             }
           }
           return isVisible;
+        },
+        lineBreak: function() {
+          return node && node.nodeType === 1 && node.nodeName === "BR";
+        },
+        block: function() {
+          return node && node.nodeType === 1 && node.ownerDocument.defaultView.getComputedStyle(node).display === "block";
+        },
+        // Void elements are elemens that can not have content
+        // In most cases browsers should solve the cases for you when you try to insert content into those,
+        //    but IE does not and it is not nice to do so anyway.
+        voidElement: function() {
+          return wysihtml.dom.domNode(node).test({
+            query: wysihtml.VOID_ELEMENTS
+          });
         }
       },
 
-      // var node = wysihtml5.dom.domNode(element).prev({nodeTypes: [1,3], ignoreBlankTexts: true});
+      // var node = wysihtml.dom.domNode(element).prev({nodeTypes: [1,3], ignoreBlankTexts: true});
       prev: function(options) {
         var prevNode = node.previousSibling,
             types = (options && options.nodeTypes) ? options.nodeTypes : defaultNodeTypes;
@@ -33,16 +66,17 @@
         }
 
         if (
-          (!wysihtml5.lang.array(types).contains(prevNode.nodeType)) || // nodeTypes check.
-          (options && options.ignoreBlankTexts && wysihtml5.dom.domNode(prevNode).is.emptyTextNode(true)) // Blank text nodes bypassed if set
+          wysihtml.dom.domNode(prevNode).is.rangyBookmark() || // is Rangy temporary boomark element (bypass)
+          (!wysihtml.lang.array(types).contains(prevNode.nodeType)) || // nodeTypes check.
+          (options && options.ignoreBlankTexts && wysihtml.dom.domNode(prevNode).is.emptyTextNode(true)) // Blank text nodes bypassed if set
         ) {
-          return wysihtml5.dom.domNode(prevNode).prev(options);
+          return wysihtml.dom.domNode(prevNode).prev(options);
         }
         
         return prevNode;
       },
 
-      // var node = wysihtml5.dom.domNode(element).next({nodeTypes: [1,3], ignoreBlankTexts: true});
+      // var node = wysihtml.dom.domNode(element).next({nodeTypes: [1,3], ignoreBlankTexts: true});
       next: function(options) {
         var nextNode = node.nextSibling,
             types = (options && options.nodeTypes) ? options.nodeTypes : defaultNodeTypes;
@@ -52,13 +86,38 @@
         }
 
         if (
-          (!wysihtml5.lang.array(types).contains(nextNode.nodeType)) || // nodeTypes check.
-          (options && options.ignoreBlankTexts && wysihtml5.dom.domNode(nextNode).is.emptyTextNode(true)) // blank text nodes bypassed if set
+          wysihtml.dom.domNode(nextNode).is.rangyBookmark() || // is Rangy temporary boomark element (bypass)
+          (!wysihtml.lang.array(types).contains(nextNode.nodeType)) || // nodeTypes check.
+          (options && options.ignoreBlankTexts && wysihtml.dom.domNode(nextNode).is.emptyTextNode(true)) // blank text nodes bypassed if set
         ) {
-          return wysihtml5.dom.domNode(nextNode).next(options);
+          return wysihtml.dom.domNode(nextNode).next(options);
         }
         
         return nextNode;
+      },
+
+      // Finds the common acnestor container of two nodes
+      // If container given stops search at the container
+      // If no common ancestor found returns null
+      // var node = wysihtml.dom.domNode(element).commonAncestor(node2, container);
+      commonAncestor: function(node2, container) {
+        var parents1 = parents(node, container),
+            parents2 = parents(node2, container);
+
+        // Ensure we have found a common ancestor, which will be the first one if anything
+        if (parents1[0] != parents2[0]) {
+          return null;
+        }
+
+        // Traverse up the hierarchy of parents until we reach where they're no longer
+        // the same. Then return previous which was the common ancestor.
+        for (var i = 0; i < parents1.length; i++) {
+          if (parents1[i] != parents2[i]) {
+            return parents1[i - 1];
+          }
+        }
+
+        return null;
       },
 
       // Traverses a node for last children and their chidren (including itself), and finds the last node that has no children.
@@ -81,24 +140,24 @@
         // Returns if element is of of options.leafClasses leaf
         if (options && options.leafClasses) {
           for (var i = options.leafClasses.length; i--;) {
-            if (wysihtml5.dom.hasClass(node, options.leafClasses[i])) {
+            if (wysihtml.dom.hasClass(node, options.leafClasses[i])) {
               return node;
             }
           }
         }
 
-        return wysihtml5.dom.domNode(lastChild).lastLeafNode(options);
+        return wysihtml.dom.domNode(lastChild).lastLeafNode(options);
       },
 
       // Splits element at childnode and extracts the childNode out of the element context
       // Example:
-      //   var node = wysihtml5.dom.domNode(node).escapeParent(parentNode);
+      //   var node = wysihtml.dom.domNode(node).escapeParent(parentNode);
       escapeParent: function(element, newWrapper) {
         var parent, split2, nodeWrap,
             curNode = node;
         
         // Stop if node is not a descendant of element
-        if (!wysihtml5.dom.contains(element, node)) {
+        if (!wysihtml.dom.contains(element, node)) {
           throw new Error("Child is not a descendant of node.");
         }
 
@@ -151,6 +210,29 @@
         }
       },
 
+      transferContentTo: function(targetNode, removeOldWrapper) {
+        if (node.nodeType === 1) {
+          if (wysihtml.dom.domNode(targetNode).is.voidElement() || targetNode.nodeType === 3) {
+            while (node.lastChild) {
+              targetNode.parentNode.insertBefore(node.lastChild, targetNode.nextSibling);
+            }
+          } else {
+            while (node.firstChild) {
+              targetNode.appendChild(node.firstChild);
+            }
+          }
+          if (removeOldWrapper) {
+            node.parentNode.removeChild(node);
+          }
+        } else if (node.nodeType === 3 || node.nodeType === 8){
+          if (wysihtml.dom.domNode(targetNode).is.voidElement()) {
+            targetNode.parentNode.insertBefore(node, targetNode.nextSibling);
+          } else {
+            targetNode.appendChild(node);
+          }
+        }
+      },
+
       /*
         Tests a node against properties, and returns true if matches.
         Tests on principle that all properties defined must have at least one match.
@@ -168,12 +250,12 @@
         }
 
         Example:
-        var node = wysihtml5.dom.domNode(element).test({})
+        var node = wysihtml.dom.domNode(element).test({})
       */
       test: function(properties) {
         var prop;
 
-        // retuern false if properties object is not defined
+        // return false if properties object is not defined
         if (!properties) {
           return false;
         }
@@ -189,7 +271,7 @@
           }
         }
 
-        if (properties.nodeName && node.nodeName !== properties.nodeName) {
+        if (properties.nodeName && node.nodeName.toLowerCase() !== properties.nodeName.toLowerCase()) {
           return false;
         }
 
@@ -211,7 +293,7 @@
               styles = (Array.isArray(properties.styleProperty)) ? properties.styleProperty : [properties.styleProperty];
           for (var j = 0, maxStyleP = styles.length; j < maxStyleP; j++) {
             // Some old IE-s have different property name for cssFloat
-            prop = wysihtml5.browser.fixStyleKey(styles[j]);
+            prop = wysihtml.browser.fixStyleKey(styles[j]);
             if (node.style[prop]) {
               if (properties.styleValue) {
                 // Style value as additional parameter
@@ -246,7 +328,7 @@
         }
 
         if (properties.attribute) {
-          var attr = wysihtml5.dom.getAttributes(node),
+          var attr = wysihtml.dom.getAttributes(node),
               attrList = [],
               hasOneAttribute = false;
 
@@ -281,4 +363,4 @@
 
     };
   };
-})(wysihtml5);
+})(wysihtml);

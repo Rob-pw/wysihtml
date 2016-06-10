@@ -1,15 +1,15 @@
-if (wysihtml5.browser.supported()) {
-  module("wysihtml5.Editor contenteditable mode", {
+if (wysihtml.browser.supported()) {
+  module("wysihtml.Editor contenteditable mode", {
     setup: function() {
-      wysihtml5.dom.insertCSS([
-        "#wysihtml5-test-editable { width: 50%; height: 100px; margin-top: 5px; font-style: italic; border: 2px solid red; border-radius: 2px; }",
-        "#wysihtml5-test-editable:focus { margin-top: 10px; }",
-        "#wysihtml5-test-editable:disabled { margin-top: 20px; }"
+      wysihtml.dom.insertCSS([
+        "#wysihtml-test-editable { width: 50%; height: 100px; margin-top: 5px; font-style: italic; border: 2px solid red; border-radius: 2px; }",
+        "#wysihtml-test-editable:focus { margin-top: 10px; }",
+        "#wysihtml-test-editable:disabled { margin-top: 20px; }"
       ]).into(document);
 
       this.editableArea        = document.createElement("div");
-      this.editableArea.id     = "wysihtml5-test-editable";
-      this.editableArea.className = "wysihtml5-test-class";
+      this.editableArea.id     = "wysihtml-test-editable";
+      this.editableArea.className = "wysihtml-test-class";
       this.editableArea.title  = "Please enter your foo";
       this.editableArea.innerHTML  = "hey tiff, what's up?";
       
@@ -21,8 +21,10 @@ if (wysihtml5.browser.supported()) {
 
     teardown: function() {
       var leftover;
-      this.editableArea.parentNode.removeChild(this.editableArea);
-      while (leftover = document.querySelector("div.wysihtml5-sandbox, div.wysihtml5-test-class")) {
+      if (this.editableArea && this.editableArea.parentNode) {
+        this.editableArea.parentNode.removeChild(this.editableArea);
+      }
+      while (leftover = document.querySelector("div.wysihtml-sandbox, div.wysihtml-test-class")) {
         leftover.parentNode.removeChild(leftover);
       }
       document.body.className = this.originalBodyClassName;
@@ -32,14 +34,14 @@ if (wysihtml5.browser.supported()) {
   asyncTest("Basic test", function() {
     expect(14);
     var that = this;
-    var editor = new wysihtml5.Editor(this.editableArea);
+    var editor = new wysihtml.Editor(this.editableArea);
     editor.on("load", function() {
       var editableElement   = that.editableArea;
       
       ok(true, "Load callback triggered");
-      ok(wysihtml5.dom.hasClass(document.body, "wysihtml5-supported"), "<body> received correct class name");
-      ok(wysihtml5.dom.hasClass(editableElement, "wysihtml5-test-class"), "editable kept its original class name");
-      ok(wysihtml5.dom.hasClass(editableElement, "wysihtml5-sandbox"), "editable added its own sandbox class name");
+      ok(wysihtml.dom.hasClass(document.body, "wysihtml-supported"), "<body> received correct class name");
+      ok(wysihtml.dom.hasClass(editableElement, "wysihtml-test-class"), "editable kept its original class name");
+      ok(wysihtml.dom.hasClass(editableElement, "wysihtml-sandbox"), "editable added its own sandbox class name");
       
       equal(editor.config.contentEditableMode, true, "contentEditableMode deduced correctly as editable is initiated on non textarea");
       equal(editor.config.noTextarea, true, "noTextarea mode deduced correctly as editable is initiated on non textarea");
@@ -49,7 +51,7 @@ if (wysihtml5.browser.supported()) {
       equal(typeof editor.textarea, "undefined", "Textarea correctly not available on editor instance");
       equal(editor.composer.element, editableElement, "contentEditable element available on editor instance");
       equal(editableElement.innerHTML.toLowerCase(), "hey tiff, what's up?", "Initial value preserved in editor");
-      ok(wysihtml5.dom.hasClass(editableElement, "wysihtml5-editor"), "Editor element has correct class name");
+      ok(wysihtml.dom.hasClass(editableElement, "wysihtml-editor"), "Editor element has correct class name");
       equal(typeof editor.synchronizer, "undefined", "Syncronizer correctly not initiated in contenteditable mode");
       
       start();
@@ -61,7 +63,7 @@ if (wysihtml5.browser.supported()) {
     expect(17);
     
     var that = this;
-    var editor = new wysihtml5.Editor(this.editableArea);
+    var editor = new wysihtml.Editor(this.editableArea);
     
     editor.on("beforeload", function() {
       ok(true, "'beforeload' event correctly fired");
@@ -106,7 +108,7 @@ if (wysihtml5.browser.supported()) {
       happen.once(composerElement, {type: "blur"});
       happen.once(composerElement, {type: "focusout"});
       
-      equal(wysihtml5.dom.getStyle("margin-top").from(composerElement), "5px", ":focus styles are correctly unset");
+      equal(wysihtml.dom.getStyle("margin-top").from(composerElement), "5px", ":focus styles are correctly unset");
       
       
       editor.fire("custom_event", { type: 'custom_event' });
@@ -119,7 +121,7 @@ if (wysihtml5.browser.supported()) {
     expect(12);
     
     var that = this;
-    var editor = new wysihtml5.Editor(this.editableArea);
+    var editor = new wysihtml.Editor(this.editableArea);
     
     editor.on("load", function() {
       var composerElement = that.editableArea;
@@ -138,10 +140,9 @@ if (wysihtml5.browser.supported()) {
       });
 
       happen.once(composerElement, {type: "paste"});
-      //Just to show that not happen.js is the source of error
-      var event = new Event('paste');
-      that.editableArea.dispatchEvent(event);
-      //QUnit.triggerEvent(composerElement, 'paste');
+      var pasteEvent = document.createEvent("Event");
+      pasteEvent.initEvent("paste", true, true);
+      that.editableArea.dispatchEvent(pasteEvent);
       
       setTimeout(function() { start(); }, 100);
     });
@@ -151,7 +152,7 @@ if (wysihtml5.browser.supported()) {
     expect(12);
     
     var that = this;
-    var editor = new wysihtml5.Editor(this.editableArea);
+    var editor = new wysihtml.Editor(this.editableArea);
     
     editor.on("load", function() {
       var composerElement = that.editableArea;
@@ -175,10 +176,9 @@ if (wysihtml5.browser.supported()) {
       });
 
       happen.once(composerElement, {type: "drop"});
-      //Just to show that not happen.js is the source of error
-      var event = new Event('drop');
-      that.editableArea.dispatchEvent(event);
-      //QUnit.triggerEvent(composerElement, 'drop');
+      var dropEvent = document.createEvent("Event");
+      dropEvent.initEvent("drop", true, true);
+      that.editableArea.dispatchEvent(dropEvent);
 
       setTimeout(function() { start(); }, 100);
     });
@@ -195,32 +195,32 @@ if (wysihtml5.browser.supported()) {
     this.editableArea.innerHTML = "";
     this.editableArea.setAttribute("data-placeholder", "enter text ...");
     
-    var editor = new wysihtml5.Editor(this.editableArea);
+    var editor = new wysihtml.Editor(this.editableArea);
     editor.on("load", function() {
       var composerElement = that.editableArea;
-      equal(wysihtml5.dom.getTextContent(composerElement), placeholderText, "Placeholder text correctly copied into textarea");
+      equal(wysihtml.dom.getTextContent(composerElement), placeholderText, "Placeholder text correctly copied into textarea");
       
-      ok(wysihtml5.dom.hasClass(composerElement, "wysihtml5-placeholder"), "Editor got 'placeholder' css class");
+      ok(wysihtml.dom.hasClass(composerElement, "wysihtml-placeholder"), "Editor got 'placeholder' css class");
       ok(editor.hasPlaceholderSet(), "'hasPlaceholderSet' returns correct value when placeholder is actually set");
       editor.fire("focus:composer");
-      equal(wysihtml5.dom.getTextContent(composerElement), "", "Editor is empty after focus");
-      ok(!wysihtml5.dom.hasClass(composerElement, "wysihtml5-placeholder"), "Editor hasn't got 'placeholder' css class");
+      equal(wysihtml.dom.getTextContent(composerElement), "", "Editor is empty after focus");
+      ok(!wysihtml.dom.hasClass(composerElement, "wysihtml-placeholder"), "Editor hasn't got 'placeholder' css class");
       ok(!editor.hasPlaceholderSet(), "'hasPlaceholderSet' returns correct value when placeholder isn't actually set");
       editor.fire("blur:composer");
-      equal(wysihtml5.dom.getTextContent(composerElement), placeholderText, "Editor restored placeholder text after unfocus");
+      equal(wysihtml.dom.getTextContent(composerElement), placeholderText, "Editor restored placeholder text after unfocus");
       editor.fire("focus:composer");    
-      equal(wysihtml5.dom.getTextContent(composerElement), "");
+      equal(wysihtml.dom.getTextContent(composerElement), "");
       composerElement.innerHTML = "some content";
       editor.fire("blur:composer");
-      equal(wysihtml5.dom.getTextContent(composerElement), "some content");
-      ok(!wysihtml5.dom.hasClass(composerElement, "wysihtml5-placeholder"), "Editor hasn't got 'placeholder' css class");
+      equal(wysihtml.dom.getTextContent(composerElement), "some content");
+      ok(!wysihtml.dom.hasClass(composerElement, "wysihtml-placeholder"), "Editor hasn't got 'placeholder' css class");
       editor.fire("focus:composer");
       // Following html causes innerText and textContent to report an empty string
       var html = '<img>';
       composerElement.innerHTML = html;
       editor.fire("blur:composer");
       equal(composerElement.innerHTML.toLowerCase(), html, "HTML hasn't been cleared even though the innerText and textContent properties indicate empty content.");
-      ok(!wysihtml5.dom.hasClass(composerElement, "wysihtml5-placeholder"), "Editor hasn't got 'placeholder' css class");
+      ok(!wysihtml.dom.hasClass(composerElement, "wysihtml-placeholder"), "Editor hasn't got 'placeholder' css class");
       start();
     });
   });
@@ -231,8 +231,8 @@ if (wysihtml5.browser.supported()) {
     
     var that = this;
     
-    var editor = new wysihtml5.Editor(this.editableArea, {
-      parserRules:        { tags: { p: { rename_tag: "div" } } },
+    var editor = new wysihtml.Editor(this.editableArea, {
+      parserRules:        { tags: { p: { rename_tag: "div" }, "strong": {} } },
       classNames: {
         body:      "editor-is-supported",
         composer:  "editor"
@@ -241,12 +241,12 @@ if (wysihtml5.browser.supported()) {
     
     editor.on("load", function() {
       ok(editor.isCompatible(), "isCompatible() returns correct value");
-      ok(wysihtml5.dom.hasClass(document.body, "editor-is-supported"), "<body> received correct class name");
+      ok(wysihtml.dom.hasClass(document.body, "editor-is-supported"), "<body> received correct class name");
       
       var composerElement = that.editableArea;
       editor.clear();
-      equal(wysihtml5.dom.getTextContent(composerElement), "", "Editor empty after calling 'clear'");
-      ok(wysihtml5.dom.hasClass(composerElement, "editor"), "Composer element has correct class name");
+      equal(wysihtml.dom.getTextContent(composerElement), "", "Editor empty after calling 'clear'");
+      ok(wysihtml.dom.hasClass(composerElement, "editor"), "Composer element has correct class name");
       
       var html = "hello <strong>foo</strong>!";
       editor.setValue(html);
@@ -291,7 +291,7 @@ if (wysihtml5.browser.supported()) {
     var input   = "<p>foobar</p>",
         output  = "<div>foobar</div>";
     
-    var editor = new wysihtml5.Editor(this.editableArea, {
+    var editor = new wysihtml.Editor(this.editableArea, {
       parserRules: parserRules
     });
     
@@ -318,7 +318,7 @@ if (wysihtml5.browser.supported()) {
           
       this.editableArea.innerHTML = input;
       equal(that.editableArea.innerHTML, input, "Content is set as unclean before editor initiation");
-      editor = new wysihtml5.Editor(this.editableArea, {
+      editor = new wysihtml.Editor(this.editableArea, {
           parserRules: parserRules
       });
           
@@ -340,7 +340,7 @@ if (wysihtml5.browser.supported()) {
         output      = input;
         
     
-    var editor = new wysihtml5.Editor(this.editableArea, {
+    var editor = new wysihtml.Editor(this.editableArea, {
       parserRules: parserRules,
       parser:      function(html, config) {
         if (typeof html !== "string") {
@@ -366,7 +366,9 @@ if (wysihtml5.browser.supported()) {
     
     var that = this;
     
-    var editor = new wysihtml5.Editor(this.editableArea);
+    var editor = new wysihtml.Editor(this.editableArea, {
+      parserRules: { tags: { "img": {} } }
+    });
     editor.on("load", function() {
       var html            = '<img>',
           composerElement = that.editableArea;
@@ -386,6 +388,63 @@ if (wysihtml5.browser.supported()) {
       }, 500);
     });
   });
+
+
+  // currently qunit does not catch the errors for testing (dispatchevent will not work with try catch), but is better than no test at all
+  asyncTest("Test editor.destroy", function() {
+    expect(1);
+
+    var toolbar = document.createElement('div'),
+        that = this,
+        noerror = true;
+
+    toolbar.innerHTML = '<a data-wysihtml-command="bold">bold</a>';
+    document.body.appendChild(toolbar);
+
+    var editor = new wysihtml.Editor(this.editableArea, {
+      toolbar: toolbar
+    });
+
+    editor.on("load", function() {
+
+      // destroy the editor
+      editor.destroy();
+      editor.composer.element.parentNode.removeChild(editor.composer.element);
+      toolbar.parentNode.removeChild(toolbar);
+
+      var range = rangy.createRange();
+      range.selectNode(document.body);
+      rangy.getSelection().setSingleRange(range);
+
+      window.onerror = function() {
+        noerror = false;
+      };
+
+      toolbar.dispatchEvent(new MouseEvent('click', {
+        'view': window,
+        'bubbles': true,
+        'cancelable': true
+      }));
+
+      document.body.dispatchEvent(new MouseEvent('click', {
+        'view': window,
+        'bubbles': true,
+        'cancelable': true
+      }));
+
+      editor.composer.element.dispatchEvent(new MouseEvent('click', {
+        'view': window,
+        'bubbles': true,
+        'cancelable': true
+      }));
+
+      setTimeout(function() {
+        ok(noerror, "Toolbar or body click did not bring up any error");
+        start();
+      }, 100);
+      
+    });
+  });
   
   /* 
   // TODO: needs logic rethink of terms and conditions
@@ -393,7 +452,7 @@ if (wysihtml5.browser.supported()) {
   asyncTest("If selection borders cross contenteditabel only editable gets modified", function() {
       expect(3);
       var that = this,
-          editor = new wysihtml5.Editor(this.editableArea);
+          editor = new wysihtml.Editor(this.editableArea);
           
       editor.on("load", function() {
           editor.setValue("foobar", true);
@@ -402,8 +461,8 @@ if (wysihtml5.browser.supported()) {
           window.e = editor;
           editor.composer.commands.exec('bold');
           
-          ok(wysihtml5.dom.getStyle("font-weight").from(that.editableArea.children[0]) == 700 || wysihtml5.dom.getStyle("font-weight").from(that.editableArea.children[0]) == "bold", "First child has style bold");
-          ok(wysihtml5.dom.getStyle("font-weight").from(that.editableArea) == 400 || wysihtml5.dom.getStyle("font-weight").from(that.editableArea) == "normal", "Editable element itself is not bold");
+          ok(wysihtml.dom.getStyle("font-weight").from(that.editableArea.children[0]) == 700 || wysihtml.dom.getStyle("font-weight").from(that.editableArea.children[0]) == "bold", "First child has style bold");
+          ok(wysihtml.dom.getStyle("font-weight").from(that.editableArea) == 400 || wysihtml.dom.getStyle("font-weight").from(that.editableArea) == "normal", "Editable element itself is not bold");
           start();
       });
   });

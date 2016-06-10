@@ -1,11 +1,11 @@
-if (wysihtml5.browser.supported()) {
-  module("wysihtml5.Editor.commands.formatInline", {
+if (wysihtml.browser.supported()) {
+  module("wysihtml.Editor.commands.formatInline", {
 
     setup: function() {
         
       this.editableArea1        = document.createElement("div");
-      this.editableArea1.id     = "wysihtml5-test-editable1";
-      this.editableArea1.className = "wysihtml5-test-class1";
+      this.editableArea1.id     = "wysihtml-test-editable1";
+      this.editableArea1.className = "wysihtml-test-class1";
       this.editableArea1.title  = "Please enter your foo";
       this.editableArea1.innerHTML  = "hey tiff, what's up?";
       
@@ -31,7 +31,7 @@ if (wysihtml5.browser.supported()) {
     teardown: function() {
       var leftover;
       this.editableArea1.parentNode.removeChild(this.editableArea1);
-      while (leftover = document.querySelector("div.wysihtml5-test-class1, iframe.wysihtml5-sandbox, div.wysihtml5-sandbox")) {
+      while (leftover = document.querySelector("div.wysihtml-test-class1, iframe.wysihtml-sandbox, div.wysihtml-sandbox")) {
         leftover.parentNode.removeChild(leftover);
       }
       document.body.className = this.originalBodyClassName;
@@ -43,7 +43,7 @@ if (wysihtml5.browser.supported()) {
   });
 
   asyncTest("Format inline", function() {
-    expect(28);
+    expect(32);
     var that = this,
         parserRules = {
           "classes": "any",
@@ -61,7 +61,7 @@ if (wysihtml5.browser.supported()) {
             strong: 1
           }
         },
-        editor = new wysihtml5.Editor(this.editableArea1, {
+        editor = new wysihtml.Editor(this.editableArea1, {
           parserRules: parserRules
         });
 
@@ -154,7 +154,13 @@ if (wysihtml5.browser.supported()) {
       that.equal(('<a href="http://www.google.com" target="_self"></a>'), editableElement.innerHTML.toLowerCase().replace(/\uFEFF/g, '').replace(/<br\/?>/gi, ''), "FormatInline given different attribute at first changes to new attribute");
       editor.composer.commands.exec("formatInline", {nodeName: "a", attribute : {"href": "http://www.google.com", "target": "_self"}});
       equal(!!editableElement.querySelector('a'), false, "Previous Insert is toggleable");
-     
+
+      blankSelectionStart(editor);
+      editor.composer.commands.exec("formatInline", { className: "color-red", classRegExp: /^color-[0-9a-z]+/});
+      that.equal(('<span class="color-red">test this text</span>'), editableElement.innerHTML.toLowerCase().replace(/\uFEFF/g, '').replace(/<br\/?>/gi, ''), "Classname color-red added");
+      editor.composer.commands.exec("formatInline", { className: "color-blue", classRegExp: /^color-[0-9a-z]+/});
+      that.equal(('<span class="color-blue">test this text</span>'), editableElement.innerHTML.toLowerCase().replace(/\uFEFF/g, '').replace(/<br\/?>/gi, ''), "Classname regex mathing classname changed to color-blue");
+
       blankSelectionStart(editor);
       editor.composer.commands.exec("formatInline", "strong");
       editor.composer.commands.exec("formatInline", "b");
@@ -166,6 +172,12 @@ if (wysihtml5.browser.supported()) {
       that.setSelection(editor, editableElement.querySelector('a').firstChild, 2 , editableElement.childNodes[2], 5);
       editor.composer.commands.exec("formatInline", {nodeName: "a", attribute : {"href": "http://www.google.com", "target": "_blank"}});
       that.equal(editableElement.innerHTML.toLowerCase(), 'th<a href="http://www.google.com" target="_blank">is is a sh</a>ort text', 'extending link selection correctly');
+
+      blankCaretStart(editor);
+      editor.composer.commands.exec("formatInline", {nodeName: "button", styleProperty: "color", styleValue: "red", toggle: false});
+      equal(editableElement.innerHTML.toLowerCase().replace(/\uFEFF/g, '').replace(/<br\/?>/gi, ''), '<button style="color: red;"></button>', "Adds custom button to curet");
+      editor.composer.commands.exec("formatInline", {nodeName: "button", styleProperty: "color", styleValue: "red", toggle: false});
+      equal(editableElement.innerHTML.toLowerCase().replace(/\uFEFF/g, '').replace(/<br\/?>/gi, ''), '<button style="color: red;"></button>', "Will not toggle if set to false");
 
       start();
     });
@@ -180,7 +192,7 @@ if (wysihtml5.browser.supported()) {
             b: true
           }
         },
-        editor = new wysihtml5.Editor(this.editableArea1, {
+        editor = new wysihtml.Editor(this.editableArea1, {
           parserRules: parserRules
         });
 
@@ -264,7 +276,7 @@ if (wysihtml5.browser.supported()) {
             }
           }
         },
-        editor = new wysihtml5.Editor(this.editableArea1, {
+        editor = new wysihtml.Editor(this.editableArea1, {
           parserRules: parserRules
         });
 
